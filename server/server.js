@@ -16,7 +16,7 @@ app.use(cors({
     const allowed = [
       "http://localhost:5173",
       "http://localhost:3000",
-      "http://localhost:4173",
+      "https://debate-coach.netlify.app",
       /\.netlify\.app$/,
       /\.netlify\.com$/,
       /\.vercel\.app$/,

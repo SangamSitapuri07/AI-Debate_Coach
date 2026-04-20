@@ -1,0 +1,14 @@
+{
+  "name": "ai-debate-coach",
+  "version": "2.0.0",
+  "description": "AI Debate Coach with 3D Battle Arena",
+  "private": true,
+  "scripts": {
+    "setup": "cd server && npm install && cd ../client && npm install",
+    "dev": "concurrently \"cd server && npm run dev\" \"cd client && npm run dev\"",
+    "start": "cd server && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

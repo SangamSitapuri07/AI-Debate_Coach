@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Model Tester</title>
+  <style>
+    body { 
+      margin: 0; 
+      background: #000; 
+      color: white; 
+      font-family: sans-serif;
+    }
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      border-right: 1px solid #333;
+    }
+    h3 { margin-bottom: 10px; color: #4f8cff; }
+    canvas { 
+      width: 100% !important; 
+      height: 400px !important; 
+      border: 1px solid #333;
+    }
+    .info {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #aaa;
+      text-align: center;
+    }
+    .error {
+      color: #ef4444;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <h3>Human Model</h3>
+      <canvas id="human-canvas"></canvas>
+      <div class="info" id="human-info">Loading...</div>
+      <div class="error" id="human-error"></div>
+    </div>
+    <div class="panel">
+      <h3>Robot Model</h3>
+      <canvas id="robot-canvas"></canvas>
+      <div class="info" id="robot-info">Loading...</div>
+      <div class="error" id="robot-error"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js';
+    import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/controls/OrbitControls.js';
+
+    function createScene(canvasId, infoId, errorId, modelPath) {
+      const canvas = document.getElementById(canvasId);
+      const infoEl = document.getElementById(infoId);
+      const errorEl = document.getElementById(errorId);
+
+      // Renderer
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(canvas.offsetWidth, 400);
+      renderer.shadowMap.enabled = true;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+      // Scene
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0a0f);
+
+      // Camera
+      const camera = new THREE.PerspectiveCamera(45, canvas.offsetWidth / 400, 0.1, 100);
+      camera.position.set(0, 1.5, 4);
+
+      // Lights
+      const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambient);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+      dirLight.position.set(2, 5, 3);
+      dirLight.castShadow = true;
+      scene.add(dirLight);
+
+      const blueLight = new THREE.PointLight(0x3b82f6, 2, 10);
+      blueLight.position.set(-2, 2, 2);
+      scene.add(blueLight);
+
+      const pinkLight = new THREE.PointLight(0xec4899, 2, 10);
+      pinkLight.position.set(2, 2, 2);
+      scene.add(pinkLight);
+
+      // Floor
+      const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(10, 10),
+        new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.8 })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      scene.add(floor);
+
+      // Grid
+      const grid = new THREE.GridHelper(10, 20, 0x1a3a6a, 0x0d1f3c);
+      scene.add(grid);
+
+      // Controls
+      const controls = new OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+      controls.target.set(0, 1, 0);
+      controls.update();
+
+      // Load model
+      const loader = new GLTFLoader();
+      loader.load(
+        modelPath,
+        (gltf) => {
+          const model = gltf.scene;
+
+          // Get bounding box
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
+
+          // Info
+          infoEl.innerHTML = `
+            ✅ Loaded!<br>
+            Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}<br>
+            Center: ${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)}<br>
+            Animations: ${gltf.animations.length}<br>
+            Meshes: ${(() => { let c = 0; model.traverse(n => { if(n.isMesh) c++; }); return c; })()}
+          `;
+
+          // Auto position - place feet on floor
+          model.position.set(-center.x, -box.min.y, -center.z);
+
+          // Enable shadows
+          model.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+
+          scene.add(model);
+
+          // Auto camera to fit model
+          const maxDim = Math.max(size.x, size.y, size.z);
+          camera.position.set(0, size.y / 2, maxDim * 2);
+          controls.target.set(0, size.y / 2, 0);
+          controls.update();
+        },
+        (progress) => {
+          const pct = Math.round((progress.loaded / progress.total) * 100);
+          infoEl.textContent = `Loading... ${pct}%`;
+        },
+        (error) => {
+          errorEl.textContent = `Error: ${error.message}`;
+          infoEl.textContent = 'Failed to load';
+        }
+      );
+
+      // Animate
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+
+    // Load both models
+    createScene('human-canvas', 'human-info', 'human-error', '/models/human.glb');
+    createScene('robot-canvas', 'robot-info', 'robot-error', '/models/robot.glb');
+  </script>
+</body>
+</html>

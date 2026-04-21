@@ -2,6 +2,7 @@ import { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import ChatMode from "./components/ChatMode";
 import BattleMode from "./components/BattleMode";
+import ThemeToggle from "./components/ThemeToggle";
 
 const MODES = [
   { id: "learn",    icon: "📚", label: "Learn",    desc: "Generate arguments" },
@@ -16,11 +17,17 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Sidebar — desktop only (hidden on mobile via CSS) */}
+      {/* Sidebar — desktop */}
       <Sidebar modes={MODES} activeMode={mode} onModeChange={setMode} />
 
-      {/* Main content */}
+      {/* Main */}
       <main className="main">
+        {/* Top bar with theme toggle — mobile */}
+        <div className="topbar">
+          <span className="topbar__title">AI Debate Coach</span>
+          <ThemeToggle />
+        </div>
+
         {mode === "battle" ? (
           <BattleMode />
         ) : (
@@ -28,7 +35,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Bottom nav — mobile only (hidden on desktop via CSS) */}
+      {/* Bottom nav — mobile */}
       <nav className="mobile-bottom-nav">
         {MODES.map((m) => (
           <button

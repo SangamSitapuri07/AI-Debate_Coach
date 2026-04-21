@@ -1,4 +1,9 @@
+import ThemeToggle from "./ThemeToggle";
+
 export default function Sidebar({ modes, activeMode, onModeChange }) {
+  const trainingModes = modes.filter((m) => m.id !== "battle");
+  const battleMode    = modes.find((m) => m.id === "battle");
+
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
@@ -11,7 +16,7 @@ export default function Sidebar({ modes, activeMode, onModeChange }) {
 
       <nav className="sidebar-nav">
         <div className="sidebar-section">Training</div>
-        {modes.filter(m => m.id !== "battle").map((m) => (
+        {trainingModes.map((m) => (
           <button
             key={m.id}
             className={`nav-btn ${activeMode === m.id ? "active" : ""}`}
@@ -30,13 +35,18 @@ export default function Sidebar({ modes, activeMode, onModeChange }) {
           className={`nav-btn battle ${activeMode === "battle" ? "active" : ""}`}
           onClick={() => onModeChange("battle")}
         >
-          <span className="nav-icon">⚔️</span>
+          <span className="nav-icon">{battleMode.icon}</span>
           <div className="nav-text">
-            <span className="nav-label">Battle</span>
-            <span className="nav-desc">Debate the AI</span>
+            <span className="nav-label">{battleMode.label}</span>
+            <span className="nav-desc">{battleMode.desc}</span>
           </div>
         </button>
       </nav>
+
+      {/* Theme toggle at bottom of sidebar */}
+      <div className="sidebar-footer">
+        <ThemeToggle className="sidebar-theme-toggle" />
+      </div>
     </aside>
   );
 }

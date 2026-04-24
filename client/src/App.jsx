@@ -3,6 +3,8 @@ import Sidebar from "./components/Sidebar";
 import ChatMode from "./components/ChatMode";
 import BattleMode from "./components/BattleMode";
 import ThemeToggle from "./components/ThemeToggle";
+import HistoryPanel from "./components/HistoryPanel";
+import useHistory from "./hooks/useHistory";
 
 const MODES = [
   { id: "learn",    icon: "📚", label: "Learn",    desc: "Generate arguments" },
@@ -12,30 +14,47 @@ const MODES = [
 ];
 
 export default function App() {
-  const [mode, setMode] = useState("learn");
+  const [mode, setMode]             = useState("learn");
+  const [showHistory, setShowHistory] = useState(false);
   const currentMode = MODES.find((m) => m.id === mode);
+  const history = useHistory();
 
   return (
     <div className="app">
-      {/* Sidebar — desktop */}
-      <Sidebar modes={MODES} activeMode={mode} onModeChange={setMode} />
+      <Sidebar
+        modes={MODES}
+        activeMode={mode}
+        onModeChange={setMode}
+        onHistoryClick={() => setShowHistory(true)}
+        historyCount={history.totalSessions}
+      />
 
-      {/* Main */}
       <main className="main">
-        {/* Top bar with theme toggle — mobile */}
+        {/* Top bar — mobile */}
         <div className="topbar">
-          <span className="topbar__title">AI Debate Coach</span>
-          <ThemeToggle />
+          <span className="topbar__title">🎓 AI Debate Coach</span>
+          <div className="topbar-actions">
+            <button
+              className="topbar-history-btn"
+              onClick={() => setShowHistory(true)}
+            >
+              📜
+              {history.totalSessions > 0 && (
+                <span className="history-badge">{history.totalSessions}</span>
+              )}
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
 
         {mode === "battle" ? (
-          <BattleMode />
+          <BattleMode history={history} />
         ) : (
-          <ChatMode mode={currentMode} />
+          <ChatMode mode={currentMode} history={history} />
         )}
       </main>
 
-      {/* Bottom nav — mobile */}
+      {/* Mobile bottom nav */}
       <nav className="mobile-bottom-nav">
         {MODES.map((m) => (
           <button
@@ -48,6 +67,21 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      {/* History panel overlay */}
+      {showHistory && (
+        <div className="history-overlay" onClick={() => setShowHistory(false)}>
+          <div
+            className="history-drawer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <HistoryPanel
+              history={history}
+              onClose={() => setShowHistory(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

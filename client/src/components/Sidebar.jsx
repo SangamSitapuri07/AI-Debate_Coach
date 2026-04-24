@@ -1,8 +1,8 @@
 import ThemeToggle from "./ThemeToggle";
 
-export default function Sidebar({ modes, activeMode, onModeChange }) {
+export default function Sidebar({ modes, activeMode, onModeChange, onHistoryClick, historyCount }) {
   const trainingModes = modes.filter((m) => m.id !== "battle");
-  const battleMode    = modes.find((m) => m.id === "battle");
+  const battleMode    = modes.find((m)  => m.id === "battle");
 
   return (
     <aside className="sidebar">
@@ -41,9 +41,22 @@ export default function Sidebar({ modes, activeMode, onModeChange }) {
             <span className="nav-desc">{battleMode.desc}</span>
           </div>
         </button>
+
+        <div className="sidebar-section">Sessions</div>
+
+        {/* History button */}
+        <button className="nav-btn history-nav-btn" onClick={onHistoryClick}>
+          <span className="nav-icon">📜</span>
+          <div className="nav-text">
+            <span className="nav-label">History</span>
+            <span className="nav-desc">View past sessions</span>
+          </div>
+          {historyCount > 0 && (
+            <span className="history-badge">{historyCount}</span>
+          )}
+        </button>
       </nav>
 
-      {/* Theme toggle at bottom of sidebar */}
       <div className="sidebar-footer">
         <ThemeToggle className="sidebar-theme-toggle" />
       </div>

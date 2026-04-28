@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 import React, { useRef, useState, useEffect, Suspense } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useGLTF, Html, Environment, ContactShadows } from "@react-three/drei";
+import { useGLTF, Html, Environment, ContactShadows, useProgress } from "@react-three/drei";
 import * as THREE from "three";
 
 // ═══════════════════════════════════════════════════════════════
@@ -193,7 +193,7 @@ function ModelInstance({ path, faceRight, visible, flipFace }) {
 
   useFrame((_, delta) => {
     if (groupRef.current) groupRef.current.visible = visible;
-
+    if (!visible) return;
     if (modelRef.current && flipFace !== undefined) {
       if (faceRight) {
         const target = flipFace ? -Math.PI / 2 : Math.PI / 2;
@@ -203,7 +203,6 @@ function ModelInstance({ path, faceRight, visible, flipFace }) {
         modelRef.current.rotation.y = lerp(modelRef.current.rotation.y, target, 0.08);
       }
     }
-
     mixerRef.current?.update(delta);
   });
 
@@ -1042,11 +1041,21 @@ class ErrorBoundary extends React.Component {
 // ═══════════════════════════════════════════════════════════════
 
 export default function CinematicIntro({ topic, onComplete }) {
+  const { progress, active } = useProgress();
+  const [isReady, setIsReady] = useState(false);
   const [elapsed, setElapsed]     = useState(0);
   const [flash, setFlash]         = useState(0);
   const [showSkip, setShowSkip]   = useState(false);
   const rafRef                    = useRef(null);
   const startRef                  = useRef(null);
+
+  // Set ready when progress hits 100
+  useEffect(() => {
+    if (!active && progress === 100) {
+      const t = setTimeout(() => setIsReady(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [active, progress]);
 
   useEffect(() => {
     const t = setTimeout(() => setShowSkip(true), 4000);
@@ -1054,6 +1063,7 @@ export default function CinematicIntro({ topic, onComplete }) {
   }, []);
 
   useEffect(() => {
+    if (!isReady) return;
     startRef.current = performance.now();
 
     const update = () => {
@@ -1114,8 +1124,26 @@ export default function CinematicIntro({ topic, onComplete }) {
                   border: "1px solid rgba(255,77,0,0.3)",
                 }}>
                   <div style={{ fontSize: "44px", marginBottom: "14px" }}>⚔️</div>
-                  <div style={{ fontSize: "14px", color: "#888", letterSpacing: "2px" }}>
-                    LOADING BATTLE...
+                  <div style={{ fontSize: "14px", color: "#888", letterSpacing: "2px", marginBottom: "10px" }}>
+                    LOADING BATTLE ASSETS...
+                  </div>
+                  <div style={{ 
+                    width: "200px", 
+                    height: "4px", 
+                    background: "rgba(255,255,255,0.1)", 
+                    borderRadius: "2px",
+                    margin: "0 auto",
+                    overflow: "hidden"
+                  }}>
+                    <div style={{ 
+                      width: `${progress}%`, 
+                      height: "100%", 
+                      background: "#ff4d00",
+                      transition: "width 0.3s ease"
+                    }} />
+                  </div>
+                  <div style={{ fontSize: "10px", color: "#555", marginTop: "8px" }}>
+                    {Math.round(progress)}%
                   </div>
                 </div>
               </Html>

@@ -92,4 +92,4 @@ npm run dev
 This project is for educational purposes. Feel free to use and adapt it for your own AI-powered applications!
 
 ---
-*Created by [SangamSitapuri07](https://github.com/SangamSitapuri07)*
+*Created by [SangamSitapuri,Yatharthanand,Abhay](https://github.com/SangamSitapuri07)*

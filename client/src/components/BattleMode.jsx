@@ -1,5 +1,6 @@
 import { useState } from "react";
 import BattleArena3D from "./BattleArena3D";
+import CinematicIntro from "./CinematicIntro";  // ← ADD THIS
 import ReactMarkdown from "react-markdown";
 import API_URL from "../config";
 
@@ -15,6 +16,7 @@ export default function BattleMode({ history }) {
   const [validating, setValidating]           = useState(false);
   const [feedback, setFeedback]               = useState(null);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [showCinematic, setShowCinematic]     = useState(false); // ← ADD
 
   const examples = [
     "Should artificial intelligence be regulated?",
@@ -24,7 +26,6 @@ export default function BattleMode({ history }) {
     "Climate change should be the top priority",
   ];
 
-  // ── Start Battle ──
   const startBattle = async () => {
     if (!topic.trim() || topic.length < 10) {
       setError("Enter a complete debate topic");
@@ -46,15 +47,10 @@ export default function BattleMode({ history }) {
         return;
       }
 
-      setBattle({
-        topic: topic.trim(),
-        totalRounds: rounds,
-        userSide,
-        aiSide: userSide === "for" ? "Against" : "For",
-        messages: [],
-        currentRound: 1,
-      });
-      setPhase("battle");
+      // ✅ Show cinematic FIRST, then battle starts after
+      
+      setShowCinematic(true);
+
     } catch (err) {
       setError("Server error. Please try again.");
     } finally {
@@ -62,14 +58,26 @@ export default function BattleMode({ history }) {
     }
   };
 
-  // ── End Battle — Get AI feedback + Save to history ──
+  // Called when cinematic finishes or is skipped
+  const handleCinematicComplete = () => {
+    setShowCinematic(false);
+    setBattle({
+      topic: topic.trim(),
+      totalRounds: rounds,
+      userSide,
+      aiSide: userSide === "for" ? "Against" : "For",
+      messages: [],
+      currentRound: 1,
+    });
+    setPhase("battle");
+  };
+
   const endBattle = async (data) => {
     setBattle(data);
     setPhase("results");
     setLoadingFeedback(true);
 
     try {
-      // Build detailed transcript
       const transcript = data.messages
         .map((m, i) => {
           const roundNum = Math.floor(i / 2) + 1;
@@ -78,25 +86,17 @@ export default function BattleMode({ history }) {
         })
         .join("\n\n" + "─".repeat(50) + "\n\n");
 
-      console.log("📊 Requesting AI feedback...");
-
       const res = await fetch(`${API}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `Judge this debate. Analyze the HUMAN debater's performance carefully.
-
+          message: `Judge this debate. Analyze the HUMAN debater's performance.
 TOPIC: "${data.topic}"
-HUMAN POSITION: ${data.userSide}
-AI POSITION: ${data.aiSide}
-ROUNDS PLAYED: ${Math.floor(data.messages.length / 2)}
-TOTAL MESSAGES: ${data.messages.length}
+HUMAN: ${data.userSide} | AI: ${data.aiSide}
+ROUNDS: ${Math.floor(data.messages.length / 2)}
 
-FULL TRANSCRIPT:
-${transcript}
-
-Give detailed, honest feedback. Quote specific things the human said.
-Give real scores — not generic 7/10 for everything.`,
+TRANSCRIPT:
+${transcript}`,
           mode: "battle-feedback",
           history: [],
           battleContext: {
@@ -111,40 +111,39 @@ Give real scores — not generic 7/10 for everything.`,
       const result = await res.json();
       if (result.error) throw new Error(result.error);
 
-      console.log("✅ Feedback received!");
       setFeedback(result.reply);
 
-      // ✅ Save battle + feedback to history
       if (history) {
         history.saveBattleSession(data, result.reply);
-        console.log("💾 Battle saved to history");
       }
     } catch (err) {
-      console.error("❌ Feedback error:", err);
-      setFeedback(`⚠️ Error getting feedback: ${err.message}`);
-
-      // Save battle even without feedback
-      if (history) {
-        history.saveBattleSession(data, null);
-      }
+      setFeedback(`⚠️ Error: ${err.message}`);
+      if (history) history.saveBattleSession(data, null);
     } finally {
       setLoadingFeedback(false);
     }
   };
 
-  // ── Restart ──
   const restart = () => {
     setPhase("setup");
     setTopic("");
     setBattle(null);
     setError("");
     setFeedback(null);
+    setShowCinematic(false);
   };
 
-  // ═══════════════════════════════════════════════════════════
-  // SETUP PHASE
-  // ═══════════════════════════════════════════════════════════
+  // ── CINEMATIC OVERLAY ──
+  if (showCinematic) {
+    return (
+      <CinematicIntro
+        topic={topic}
+        onComplete={handleCinematicComplete}
+      />
+    );
+  }
 
+  // SETUP
   if (phase === "setup") {
     return (
       <div className="battle-setup">
@@ -159,23 +158,14 @@ Give real scores — not generic 7/10 for everything.`,
             type="text"
             placeholder="Enter your debate topic..."
             value={topic}
-            onChange={(e) => {
-              setTopic(e.target.value);
-              setError("");
-            }}
+            onChange={(e) => { setTopic(e.target.value); setError(""); }}
             onKeyDown={(e) => e.key === "Enter" && startBattle()}
             className={error ? "error" : ""}
           />
 
           <div className="topic-examples">
             {examples.map((ex, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  setTopic(ex);
-                  setError("");
-                }}
-              >
+              <button key={i} onClick={() => { setTopic(ex); setError(""); }}>
                 {ex}
               </button>
             ))}
@@ -187,16 +177,10 @@ Give real scores — not generic 7/10 for everything.`,
             <div className="option-group">
               <label>Your Position</label>
               <div className="option-buttons">
-                <button
-                  className={userSide === "for" ? "active" : ""}
-                  onClick={() => setUserSide("for")}
-                >
+                <button className={userSide === "for" ? "active" : ""} onClick={() => setUserSide("for")}>
                   🟢 FOR
                 </button>
-                <button
-                  className={userSide === "against" ? "active" : ""}
-                  onClick={() => setUserSide("against")}
-                >
+                <button className={userSide === "against" ? "active" : ""} onClick={() => setUserSide("against")}>
                   🔴 AGAINST
                 </button>
               </div>
@@ -205,11 +189,7 @@ Give real scores — not generic 7/10 for everything.`,
               <label>Rounds</label>
               <div className="option-buttons">
                 {[3, 5, 7].map((r) => (
-                  <button
-                    key={r}
-                    className={rounds === r ? "active" : ""}
-                    onClick={() => setRounds(r)}
-                  >
+                  <button key={r} className={rounds === r ? "active" : ""} onClick={() => setRounds(r)}>
                     {r}
                   </button>
                 ))}
@@ -229,10 +209,7 @@ Give real scores — not generic 7/10 for everything.`,
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // BATTLE PHASE
-  // ═══════════════════════════════════════════════════════════
-
+  // BATTLE
   if (phase === "battle") {
     return (
       <BattleArena3D
@@ -243,10 +220,7 @@ Give real scores — not generic 7/10 for everything.`,
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // RESULTS PHASE
-  // ═══════════════════════════════════════════════════════════
-
+  // RESULTS
   return (
     <div className="battle-results">
       <div className="results-header">
@@ -260,17 +234,6 @@ Give real scores — not generic 7/10 for everything.`,
           <div className="results-loading">
             <span>🤔</span>
             <p>AI judge is analyzing your performance...</p>
-            <p
-              style={{
-                fontSize: "11px",
-                color: "var(--text-muted)",
-                marginTop: "10px",
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              Reading {battle?.messages?.length || 0} messages ·{" "}
-              {Math.floor((battle?.messages?.length || 0) / 2)} rounds
-            </p>
           </div>
         ) : (
           <div className="results-feedback">
